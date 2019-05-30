@@ -1,0 +1,6 @@
+[submodule "specs"]
+	path = specs
+	url = https://github.com/zvxryb/specs.git
+[submodule "shred"]
+	path = shred
+	url = https://github.com/zvxryb/shred.git

@@ -1,0 +1,16 @@
+[package]
+name = "specs_multi_world"
+publish = false
+version = "0.1.0"
+
+[dependencies]
+cgmath = "0.17.0"
+glium = "0.23.0"
+rand = "0.6.5"
+rayon = {version="1.0.3"}
+shred-derive = {path="./shred/shred-derive"}
+specs = {path="./specs"}
+
+[[bin]]
+name = "multi_world"
+path = "src/multi_world.rs"
