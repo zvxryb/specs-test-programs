@@ -282,7 +282,7 @@ impl<'a, 'b> GameState<'a, 'b> {
             (head.last().unwrap(), tail.first_mut().unwrap())
         };
 
-        *world_dst = world_src.clone();
+        world_dst.clone_from(world_src);
 
         let real_time = Instant::now();
         let mut tick_count = 0;
