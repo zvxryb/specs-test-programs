@@ -20,7 +20,7 @@ use specs::shred::{Resource};
 use std::time::{Duration, Instant};
 use std::f64::consts::PI as PI_F64;
 
-const WORLD_HISTORY: usize = 16;
+const WORLD_HISTORY: usize = 32;
 const VERTEX_BUFFER_SIZE: usize = 1 << 15;
 
 trait AsSeconds<T> {
@@ -159,7 +159,7 @@ impl<'a> System<'a> for Lifecycle {
 
         secondary_rs.into_iter().for_each(|r| {
             let duration_dist = rand_dist::Normal::new(1f64, 0.01f64);
-            let velocity_dist = rand_dist::Normal::new(0.2f64, 0.01f64);
+            let velocity_dist = rand_dist::Normal::new(0.1f64, 0.03f64);
             let angle_dist    = rand_dist::Uniform::new(0f64, 2f64 * PI_F64);
 
             (0..20).into_iter().for_each(|_| {
@@ -179,7 +179,7 @@ impl<'a> System<'a> for Lifecycle {
 
         let duration_dist = rand_dist::Normal::new(3f64, 0.5f64);
         let pos_dist      = rand_dist::Uniform::new(0f64, 1f64);
-        let velocity_dist = rand_dist::Normal::new(0.5f64, 0.01f64);
+        let velocity_dist = rand_dist::Normal::new(0.35f64, 0.01f64);
         let angle_dist    = rand_dist::Normal::new(PI_F64/2f64, 0.01f64 * PI_F64);
 
         self.pending += dt * Self::SPAWN_RATE;
@@ -363,7 +363,7 @@ impl<'a, 'b> GameState<'a, 'b> {
                     &self.program, &uniforms, &params)
                     .expect("failed to draw frame");
             }
-            brightness *= 0.7;
+            brightness *= 0.8;
         }
 
         frame.finish().unwrap();
@@ -437,7 +437,7 @@ fn main() {
 
             void main() {
                 v_color = color;
-                gl_Position = vec4(2.0 * position * vec2(1.0, screen_size.y / screen_size.x) - 1.0, 0.0, 1.0);
+                gl_Position = vec4(2.0 * position * vec2(1.0, screen_size.x / screen_size.y) - 1.0, 0.0, 1.0);
             }
         "#,
         r#"
