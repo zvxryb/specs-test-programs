@@ -20,7 +20,7 @@ use specs::shred::{Resource};
 use std::time::{Duration, Instant};
 use std::f64::consts::PI as PI_F64;
 
-const WORLD_HISTORY: usize = 32;
+const WORLD_HISTORY: usize = 16;
 const VERTEX_BUFFER_SIZE: usize = 1 << 15;
 
 trait AsSeconds<T> {
@@ -41,10 +41,10 @@ struct Clock {
 }
 
 impl Clock {
-    const TICK_RATE_HZ: u32 = 60;
+    const TICK_RATE_HZ: u32 = 30;
     const TICK_DELTA_US: u32 = 1_000_000 / Self::TICK_RATE_HZ;
     const TICK_DELTA: f32 = 1f32 / (Self::TICK_RATE_HZ as f32);
-    const MIN_DISPLAY_RATE_HZ: u32 = 30;
+    const MIN_DISPLAY_RATE_HZ: u32 = 5;
     const MAX_EXTRAPOLATION_US: u32 = 1_000_000 / Self::MIN_DISPLAY_RATE_HZ;
     const MAX_TICKS: u32 = Self::TICK_RATE_HZ / Self::MIN_DISPLAY_RATE_HZ;
 
@@ -65,6 +65,7 @@ impl Clock {
 
         self.last_frame += tick_delta;
         self.simulation += tick_delta;
+        self.display     = self.simulation;
         true
     }
 }
@@ -156,6 +157,7 @@ impl<'a> System<'a> for Lifecycle {
     type SystemData = (
         specs::Entities<'a>,
         specs::Read<'a, Clock>,
+        specs::Read<'a, ScreenSize>,
         specs::WriteStorage<'a, Lifetime>,
         specs::WriteStorage<'a, FirstStage>,
         specs::WriteStorage<'a, Position>,
@@ -164,7 +166,7 @@ impl<'a> System<'a> for Lifecycle {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, clock, mut lifetimes, mut first_stage, mut rs, mut vs, mut colors) = data;
+        let (entities, clock, screen_size, mut lifetimes, mut first_stage, mut rs, mut vs, mut colors) = data;
 
         let dt = Clock::TICK_DELTA;
         let secondary_rs = (&entities, &lifetimes).par_join()
@@ -191,7 +193,7 @@ impl<'a> System<'a> for Lifecycle {
             let hue_dist      = rand_dist::Uniform::new(0f32, 1f32);
             let color = Color::from_hue(hue_dist.sample(&mut rng));
 
-            (0..20).into_iter().for_each(|_| {
+            (0..100).into_iter().for_each(|_| {
                 let duration_us = (1_000_000f64 * duration_dist.sample(&mut rng)) as u64;
                 let velocity = velocity_dist.sample(&mut rng) as f32;
                 let angle = angle_dist.sample(&mut rng) as f32;
@@ -205,8 +207,9 @@ impl<'a> System<'a> for Lifecycle {
             });
         });
 
+        let ScreenSize(w, h) = *screen_size;
         let duration_dist = rand_dist::Normal::new(3f64, 0.5f64);
-        let pos_dist      = rand_dist::Uniform::new(0f64, 1f64);
+        let pos_dist      = rand_dist::Uniform::new(0f64, w as f64 / h as f64);
         let velocity_dist = rand_dist::Normal::new(0.35f64, 0.01f64);
         let angle_dist    = rand_dist::Normal::new(PI_F64/2f64, 0.01f64 * PI_F64);
 
@@ -300,23 +303,23 @@ struct GameState<'a, 'b> {
 
 impl<'a, 'b> GameState<'a, 'b> {
     fn update(&mut self) {
-        self.index = (self.index + 1) % WORLD_HISTORY;
-
-        let (world_src, world_dst) = if self.index == 0 {
-            let (head, tail) = self.worlds.split_at_mut(1);
-            (tail.last().unwrap(), head.first_mut().unwrap())
-        } else {
-            let (head, tail) = self.worlds.split_at_mut(self.index);
-            (head.last().unwrap(), tail.first_mut().unwrap())
-        };
-
-        world_dst.clone_from(world_src);
-
         let real_time = Instant::now();
         let mut tick_count = 0;
-        while world_dst.write_resource::<Clock>()
+        while self.worlds[self.index].write_resource::<Clock>()
             .advance(&mut tick_count, real_time)
         {
+            self.index = (self.index + 1) % WORLD_HISTORY;
+
+            let (world_src, world_dst) = if self.index == 0 {
+                let (head, tail) = self.worlds.split_at_mut(1);
+                (tail.last().unwrap(), head.first_mut().unwrap())
+            } else {
+                let (head, tail) = self.worlds.split_at_mut(self.index);
+                (head.last().unwrap(), tail.first_mut().unwrap())
+            };
+
+            world_dst.clone_from(world_src);
+
             self.dispatcher.dispatch(&world_dst.res);
             world_dst.maintain();
         }
@@ -465,7 +468,7 @@ fn main() {
 
             void main() {
                 v_color = color;
-                gl_Position = vec4(2.0 * position * vec2(1.0, screen_size.x / screen_size.y) - 1.0, 0.0, 1.0);
+                gl_Position = vec4(2.0 * position * vec2(screen_size.y / screen_size.x, 1.0) - 1.0, 0.0, 1.0);
             }
         "#,
         r#"
