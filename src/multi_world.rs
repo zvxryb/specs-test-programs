@@ -91,6 +91,32 @@ struct Velocity(Vector2<f32>);
 #[derive(Clone, Copy)]
 struct Color(f32, f32, f32, f32);
 
+impl Color {
+    fn hue_to_channel(mut hue: f32, channel: u32) -> f32 {
+        hue *= 6f32;
+        hue = (hue + (2 * channel) as f32) % 6f32;
+        if hue > 3f32 {
+            hue = 6f32 - hue;
+        }
+        if hue < 1f32 {
+            1f32
+        } else if hue < 2f32 {
+            (2f32 - hue) * 3f32
+        } else {
+            0f32
+        }
+    }
+
+    fn from_hue(hue: f32) -> Color {
+        Color(
+            Self::hue_to_channel(hue, 0),
+            Self::hue_to_channel(hue, 1),
+            Self::hue_to_channel(hue, 2),
+            1f32
+        )
+    }
+}
+
 #[derive(Clone)]
 struct Lifetime(Duration);
 
@@ -158,12 +184,14 @@ impl<'a> System<'a> for Lifecycle {
             .collect::<Vec<_>>();
 
         secondary_rs.into_iter().for_each(|r| {
+            let mut rng = rand::thread_rng();
             let duration_dist = rand_dist::Normal::new(1f64, 0.01f64);
             let velocity_dist = rand_dist::Normal::new(0.1f64, 0.03f64);
             let angle_dist    = rand_dist::Uniform::new(0f64, 2f64 * PI_F64);
+            let hue_dist      = rand_dist::Uniform::new(0f32, 1f32);
+            let color = Color::from_hue(hue_dist.sample(&mut rng));
 
             (0..20).into_iter().for_each(|_| {
-                let mut rng = rand::thread_rng();
                 let duration_us = (1_000_000f64 * duration_dist.sample(&mut rng)) as u64;
                 let velocity = velocity_dist.sample(&mut rng) as f32;
                 let angle = angle_dist.sample(&mut rng) as f32;
@@ -172,7 +200,7 @@ impl<'a> System<'a> for Lifecycle {
                     .with(Lifetime(clock.simulation + Duration::from_micros(duration_us)), &mut lifetimes)
                     .with(r, &mut rs)
                     .with(Velocity(v), &mut vs)
-                    .with(Color(1f32, 1f32, 1f32, 1f32), &mut colors)
+                    .with(color, &mut colors)
                     .build();
             });
         });
