@@ -102,7 +102,7 @@ impl Color {
         if hue < 1f32 {
             1f32
         } else if hue < 2f32 {
-            (2f32 - hue) * 3f32
+            2f32 - hue
         } else {
             0f32
         }
@@ -210,7 +210,7 @@ impl<'a> System<'a> for Lifecycle {
         let ScreenSize(w, h) = *screen_size;
         let duration_dist = rand_dist::Normal::new(3f64, 0.5f64);
         let pos_dist      = rand_dist::Uniform::new(0f64, w as f64 / h as f64);
-        let velocity_dist = rand_dist::Normal::new(0.35f64, 0.01f64);
+        let velocity_dist = rand_dist::Normal::new(0.35f64, 0.03f64);
         let angle_dist    = rand_dist::Normal::new(PI_F64/2f64, 0.01f64 * PI_F64);
 
         self.pending += dt * Self::SPAWN_RATE;
